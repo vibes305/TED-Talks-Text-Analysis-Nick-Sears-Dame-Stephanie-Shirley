@@ -1,0 +1,232 @@
+---
+title: "MA331-Report: 2211466"
+author: "NAYAK, VAIBHAV"
+subtitle: TED Talks by Speaker Nick Sears and Speaker Dame Stephanie Shirley
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+### Don't delete this setup code chunk from your file
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, comment = NULL)   ## DON'T ALTER THIS: this is to prevent printing the code or any unnecessary addition in your final "html" report file.
+
+# You can extend this list below to load all the packages required for your analyses:
+#====================================================================================
+library(dsEssex)
+library(tidyverse)
+library(tidytext)
+library(stopwords)
+library(ggrepel)
+library(scales)
+library(plotly)
+library(here)
+library(ggrepel)
+
+# load the 'ted_talks' data
+#=========================
+data(ted_talks)
+```
+
+<span style="color:red;">
+
+```{=html}
+<style>
+body {
+text-align:justify;
+}
+</style>
+```
+## 1. Introduction
+
+This project aims to conduct a text analysis of two TED Talks delivered by Nick Sears and Dame Stephanie Shirley, respectively. Nick Sears' TED Talk, delivered in 2007, is titled "Demo: The Orb," while Dame Stephanie Shirley's TED Talk, delivered in 2015, is titled "Why do ambitious women have flat heads?".Nick Sears shows how a fully volumetric display can produce a sphere of light with just 256 LEDs. His invention is a modernization of Buckminster Fuller's 1962 Geoscope, a geodesic sphere with a 200-foot circumference that could show world data and trends through animations.Dame Stephanie Shirley's TED Talk is about her experiences as a successful businesswoman in a male-dominated industry, and explores why women who are ambitious and successful may face societal pressures to conform and downplay their achievements.
+The project seeks to answer questions such as number of different facets, the themes they covered, the sentiment they used, and the terms they used most frequently. Additionally, the project will use odds ratio analysis & sentimental analysis to identify the words most strongly connected to each speaker's speeches, with the ultimate goal of gaining a better understanding of Nick Sears' and Dame Stephanie Shirley's viewpoints and ideas.
+
+## 2. Methods
+
+To achieve the Analysis objectives following methods are followed:
+
+### 2.1 Load the Data
+
+The ted_talks has many speakers data. As per report requirement, data related to above mentioned speaker is filtered using filter function.Later, digits and unwanted spaces are removed using string function, So that only text remains for analysis.
+
+```{r}
+#Filters the speakers required for analysis
+MyData <- ted_talks %>%
+  filter(speaker %in% c("Nick Sears", "Dame Stephanie Shirley"))
+#Removes the Digits and unwanted space present in text.
+MyData$text <- str_replace_all(MyData$text , "[^[:alpha:][:space:]]","" )
+```
+
+### 2.2 Tidying and Tokenisation
+
+Tokenisation is the process of breaking apart text into individual tokens, a meaningful unit of text for analysis. Tidying is the process of arranging the data into a specific structure: Each variable is a column, Each observation is a row, Each type of observation unit is a table.
+
+```{r}
+#Tidytext's unnest_talks() to tidying and tokenising the ted_talks data in single words.
+tidy_talks <- MyData %>% tidytext:: unnest_tokens(word, text) 
+```
+
+### 2.3 Stop words Removal and Identification of top words for certain speakers
+
+Words such as 'the', 'and', and 'to' are NOT interesting for a text analysis. Such words are called stop words. Often the best choice is to remove them. The tidytext package provides access to stop word lexicons (using get_stopwords()), through whic some of the dplyr's functions can be used in analysis, e.g., anti_join() to remove the stop words. Use the anti_join() function to remove the stopwords from the tokenised TED talks data. Following the removal of the stopwords, Using the dplyr's count() to count up words from the TED talk given by both speakers.Sorting the words with the most frequent terms at the top.
+
+```{r}
+#Removal of stop words using anti-joining stop words function.
+ted_talks_nonstop <- tidy_talks %>%
+  dplyr::anti_join(get_stopwords()) 
+#Top words of Nick Sears
+NickSears_words <- ted_talks_nonstop %>%
+  dplyr::filter(speaker == "Nick Sears") %>% 
+  dplyr::count(speaker, word, sort = TRUE)
+#Top words of Dame Stephanie Shirley
+DameStephanieShirley_words <- ted_talks_nonstop %>%
+  dplyr::filter(speaker == "Dame Stephanie Shirley") %>% 
+  dplyr::count(speaker, word, sort = TRUE)
+```
+
+### 2.4 Visualisation of top words for certain speaker
+
+Following Calculation top words for certain speaker, Now the top words vs count is displayed. The top words are calculated,so that some patterns,Unique feature,tone can be predicted.
+Speaker1 is Nick Sears and Speaker2 is Dame Stephanie Shirley.
+
+```{r fig.height=4, fig.width=4}
+#Ploting bar graph for Top words vs count
+spk1_plot <- NickSears_words %>%
+  #Slicing top words into 10
+  dplyr::slice_max(n, n = 10) %>%
+  dplyr::mutate(word = reorder(word, n)) %>%
+  ggplot2::ggplot(aes(n, word)) + ggplot2::geom_col() + 
+  labs(title = "Fig 2.4.1 Top words : Speaker1")
+
+spk2_plot <- DameStephanieShirley_words %>%
+  #Slicing top words into 10
+  dplyr::slice_max(n, n = 10) %>%
+  dplyr::mutate(word = reorder(word, n)) %>%
+  ggplot2::ggplot(aes(n, word)) + ggplot2::geom_col() +
+  labs(title = "Fig 2.4.2 Top words : Speaker2")
+spk1_plot
+spk2_plot 
+```
+
+As shown in above Fig 2.4.1, The most words used by Nick sears are display,leds,sphere,microcontollers,light, axis,disc. Some stories that can be observed based on these words are: Speaker1 is working on Led display technology, word "micro controllers" tells that speaker1 uses this device for his work ,words "sphere" ,"axis" , disc suggest that speaker1 is developing led displays with different shapes or movements. As shown in above Fig 2.4.2, The most words used by Dame Stephanie Shirley are women, company, software, first, year. Some stories that can be observed based on these words are: Speaker2 is focusing on women empowerment, words "company","software","first" tells that speaker2's interest in business,Technology & innovation ,word "years" , suggest that speaker2 is working for long time in mentioned field.
+
+### 2.5 Comparison between speaker using Visualization.
+
+After counting words from the talks of Nick Sears and Dame Stephanie Shirley.From the package ggrepel to plot words of DameStephanieShirley_words on the x-axis against words of NickSears_words on the y-axis.Comparing the word usage patterns between two speakers and identifying the words that are used more frequently by one speaker compared to the other.
+
+```{r fig.height=5, fig.width=8 , fig.align='center'}
+library(ggrepel)
+#Binding top words of both speaker using dplyr library
+Compare_speakers <- dplyr::bind_rows(NickSears_words, DameStephanieShirley_words) %>%
+  #Grouping it by word
+  group_by(word) %>%
+  #filtering the most common words.
+  filter(sum(n) > 3) %>%
+  ungroup() %>%
+  pivot_wider(names_from = "speaker", values_from = "n", values_fill = 0) %>%
+  #plotting speaker1 vs speaker2
+  ggplot(aes(`Dame Stephanie Shirley`, `Nick Sears`))  +
+  #drawing a slope to indicate words used by both speaker
+  geom_abline(color = "red", size = 1.2, alpha = 0.75, lty = 5) + 
+  #reducing word overlapps
+  geom_text_repel(aes(label = word), max.overlaps = 40) +
+  coord_fixed() +
+  #naming the figure using labs
+  labs(title = "Fig 2.5.1 Comparision btw two Speaker frequent words")
+Compare_speakers
+```
+
+As shown above in Fig 2.5.1, Both speaker text has "applause", which indicates they received applause during speech,But Dame Stephanie shirley received more applause compared to Nick sears .Henceforth applause word is only visible towards the same speaker.Both speakers used word "just" four times, but in different contexts.Word "just" can predict many things like speaker may try to keep it simple to all or try to mean they are not a expertise in that field.But we cannot predict or conclude without considering the speakers context and intentions.Both speaker have used "years" ,which may mean as their experiences or passage of time.
+
+## 3. Results
+
+### 3.1 Sentimental analysis using Bing Lexicon
+
+The process of determining the sentiment or emotion expressed in a text document, such as a tweet, review, or news story, is known as sentiment analysis. It can be used in a wide range of real-world situations, including marketing, customer support, and social media monitoring. Using a lexicon, which is a list of words and phrases labelled with their matching sentiment, is one common technique for sentiment analysis (positive, negative, or neutral).Analyzing sentiment using Bing lexicon and then grouping the data by the speaker and headline.The code then groups the sentiment count by headline and calculates the total number of words in each headline and the percentage of each sentiment (positive or negative) for each headline. Finally, it arranges the results in descending order based on the percentage of positive sentiment expressed in each headline.
+
+```{r,fig.align='center', fig.height=4, fig.width=8}
+#get_setiments() attaches all word with certain sentiment.
+Sentiment_bing <- ted_talks_nonstop %>%
+  inner_join(get_sentiments("bing"))
+
+#counts total sentiment based on 
+sentiment_count_bing <- Sentiment_bing %>%
+    count(speaker, headline, sentiment)
+
+Both_speaker<- sentiment_count_bing  %>%
+  group_by(headline) %>%
+# find the total number of words in each speaker, and percentage of each sentiment
+  mutate(total = sum(n), percent = n / total) %>%
+# filter the results for only positive sentiment
+  arrange(desc(percent))
+#plotting total number of sentiments vs speaker w.r.t bing lexicon
+Sent_bing_plot <- ggplot(Both_speaker, aes(speaker,n)) +
+  geom_col() +
+  labs(title = "Fig 3.1.1 Sentimental Analysis using Bing Lexicon") +
+  facet_wrap(~ sentiment)
+Sent_bing_plot
+```
+
+
+As shown in Fig 3.1.1, , observation can be divided as 3 parts as follows: 1.In both negative and positive sentiment, Dame Stephanie Shirley has higher value compared to Nick sears.2.Dame Stephanie Shirley, has higher value of positive sentiment compared to negative sentiment.3.Also Nick sears, has higher value of positive sentiment compared to negative sentiment.
+This implies that Dame Stephanie Shirley's Ted presentation may have gotten greater audience participation and response than Nick Sears' Ted talk. Overall, the results indicate that the audience generally had a more favorable perception of both speakers than a negative one. It's crucial to remember that sentiment analysis has its limitations and might not always fully reflect the complexity of human emotions and viewpoints. In order to thoroughly comprehend the audience's response to the Ted speeches, it may be necessary to proceed with caution before drawing any conclusions from this data.
+
+### 3.2 Odds Ratio 
+For each word, it tells in which speakers talk the word is more likely to occur. Analysis uses the odds ratio summary statistic (referred to as OR) for quantifying these comparisons. To determine which words are more likely to be connected to a poistive or negative sentiment, sentiment analysis uses odds ratio. The underlying feelings and thoughts stated in the text can be better understood as a result.
+
+```{r,fig.align='center'}
+library(knitr)
+## function to compute OR
+compute_OR <- function(numerator, denominator, correction = TRUE){
+  if(correction){
+    ODDS_N = (numerator + 0.5) / (sum(numerator) - numerator + 0.5)
+    ODDS_D = (denominator + 0.5) / (sum(denominator) - denominator + 0.5)
+  } else {
+    ODDS_N = numerator / (sum(numerator) - numerator)
+    ODDS_D = denominator / (sum(denominator) - denominator)
+  }
+  OR = ODDS_N/ODDS_D
+}
+
+Log_OR <- ted_talks_nonstop %>%
+#joining nrc sentiment to each word
+  inner_join(get_sentiments("nrc"), by = "word") %>%
+#counting sentiment based on each speaker
+  count(speaker, sentiment) %>%
+#converting tidy data into wider data using pivot_wider
+  pivot_wider(names_from = "speaker", values_from = n, values_fill = 0) %>%
+#adding OR and log_OR column using compute_OR function for both speakers
+mutate(OR = dsEssex::compute_OR( `Nick Sears`, `Dame Stephanie Shirley` , correction = FALSE), log_OR = log(OR), sentiment = reorder(sentiment, log_OR))%>%
+arrange(desc(OR))
+#Drawing a neat table to explain OR and log_OR using kable function
+knitr::kable(Log_OR , format = "markdown", 
+             col.names = c("Sentiment", "Dame Stephanie Shirley", "Nick Sears", "OR", "log_OR"),
+             align = c("l", "r", "r", "r", "r"),
+             caption = "Table 3.2.1 Sentiment Analysis Results using nrc Lexicon",
+             booktabs = TRUE,
+             linesep = "")
+```
+
+As shown in Table 3.2.1, The OR value for sentiment negative is almost equal to 1.It means that sentiment was equally appeared in both speakers ted talk.The OR value is greater than 1 , for sentiments like trust & positive. It means those sentiments have appeared at Dame Stephanie Shirley talk more than its appearance at Nick Sears.The OR value is lesser than 1 for sentiments like anticipation,joy,surprise,fear,sadness,anger & disgust.It means those sentiments have appeared at Nick Sears talk more than its appearance Dame Stephanie Shirley.log_OR value is positive for sentiments trust, positive & negative, which means Dame Stephanie shirley has slightly more association of these compared to Nick Sears.log_OR value is negative for sentiments anticipation,joy,surprise,fear,sadness,anger & disgust, which means Nick Sears has slightly more association of these compared to Dame Stephanie shirley.
+
+## 4. Conclusion
+
+The study offers three approaches for evaluating Dame Stephanie Shirley and Nick Sears' Ted Talks. In the first approach, the frequency of particular terms used by both speakers is contrasted.The sentiment of the audience's reaction to the remarks is examined using the second technique. The third approach computes the odds ratio and log OR to identify the relationship between various sentiments and each speaker. According to the findings, Nick Sears drew less applause and had a lower positive sentiment score than Dame Stephanie Shirley. Nicholas Sears, meanwhile, scored higher on emotions like eagerness, delight, surprise, fear, melancholy, wrath, and disgust. According to the study, both speakers were generally well-liked by the crowd, but care should be taken when interpreting the statistics.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
